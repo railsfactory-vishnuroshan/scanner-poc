@@ -11,9 +11,9 @@ import {BarcodeScanner} from '../components/BarcodeScanner';
 const demoFormSchema = z.object({
   productCode: z.string().min(1, 'Product code is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
+ 
   location: z.string().min(1, 'Location is required'),
-  notes: z.string().optional(),
+  
 });
 
 type DemoFormData = z.infer<typeof demoFormSchema>;
@@ -38,9 +38,7 @@ export function BarcodeScannerDemoPage() {
     defaultValues: {
       productCode: '',
       serialNumber: '',
-      quantity: 1,
       location: '',
-      notes: '',
     },
   });
 
@@ -77,7 +75,7 @@ export function BarcodeScannerDemoPage() {
       if (parts.length >= 4) {
         setValue('productCode', parts[0]);
         setValue('serialNumber', parts[1]);
-        setValue('quantity', parseInt(parts[2], 10) || 1);
+        
         setValue('location', parts[3]);
       } else {
         // Fallback: Use as product code if format doesn't match
@@ -85,11 +83,7 @@ export function BarcodeScannerDemoPage() {
       }
     } else if (activeField) {
       // Populate single field
-      if (activeField === 'quantity') {
-        setValue(activeField, parseInt(scannedText, 10) || 1);
-      } else {
-        setValue(activeField, scannedText);
-      }
+      setValue(activeField, scannedText);
     }
     setShowScanner(false);
     setActiveField(null);
@@ -172,34 +166,6 @@ export function BarcodeScannerDemoPage() {
                 </div>
               </div>
 
-              {/* Quantity */}
-              <div>
-                <label htmlFor="quantity" className="label">
-                  Quantity <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    {...register('quantity', { valueAsNumber: true })}
-                    type="number"
-                    min="1"
-                    className={`text-input w-full ${errors.quantity ? 'border-red-500' : ''}`}
-                    placeholder="Enter quantity"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => openScanner('quantity')}
-                    className="icon-button"
-                  >
-                    <QrCodeIcon className="size-5" />
-                  </button>
-                </div>
-                <div className="mt-1 h-1">
-                  {errors.quantity && (
-                    <p className="text-sm text-red-500">{errors.quantity.message}</p>
-                  )}
-                </div>
-              </div>
-
               {/* Location */}
               <div>
                 <label htmlFor="location" className="label">
@@ -225,20 +191,6 @@ export function BarcodeScannerDemoPage() {
                   )}
                 </div>
               </div>
-
-              {/* Notes */}
-              <div>
-                <label htmlFor="notes" className="label">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  {...register('notes')}
-                  rows={3}
-                  className="text-input w-full"
-                  placeholder="Additional notes..."
-                />
-              </div>
-
               {/* Multi-field scan button */}
               <div className="rounded border border-dashed border-gray-300 p-4">
                 <button
