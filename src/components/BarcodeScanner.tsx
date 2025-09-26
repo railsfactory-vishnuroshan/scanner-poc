@@ -81,11 +81,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, isOpen, formats
       // Use provided formats or default to common warehouse/retail barcode formats for faster detection
       const barcodeFormats = formats || [
         'CODE_128',     // Most common warehouse format
-        'CODE_39',      // Common industrial format
         'EAN_13',       // Product barcodes
-        'EAN_8',        // Product barcodes
-        'QR_CODE',      // QR codes
-        'PDF_417'       // Sometimes used in warehouses
       ];
       hints.set('POSSIBLE_FORMATS', barcodeFormats);
       hints.set('TRY_HARDER', false); // Faster detection, less thorough
