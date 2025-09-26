@@ -371,7 +371,7 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
           <div className="relative">
             <video
               ref={videoRef}
-              className="h-64 w-full scale-x-[-1] rounded-lg bg-gray-900 object-cover"
+              className="h-64 w-full rounded-lg bg-gray-900 object-cover"
               playsInline
               muted
               autoPlay
