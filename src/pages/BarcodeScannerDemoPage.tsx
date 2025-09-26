@@ -13,7 +13,6 @@ const demoFormSchema = z.object({
   serialNumber: z.string().min(1, "Serial number is required"),
   quantity: z.number().min(1, "Quantity must be at least 1"),
   location: z.string().min(1, "Location is required"),
-  notes: z.string().optional(),
 });
 
 type DemoFormData = z.infer<typeof demoFormSchema>;
@@ -41,7 +40,6 @@ const BarcodeScannerDemoPage: React.FC = () => {
       serialNumber: "",
       quantity: 1,
       location: "",
-      notes: "",
     },
   });
 
@@ -283,22 +281,6 @@ const BarcodeScannerDemoPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Notes */}
-              <div>
-                <label
-                  htmlFor="notes"
-                  className="block text-sm font-medium text-slate-700 mb-1"
-                >
-                  Notes (Optional)
-                </label>
-                <textarea
-                  {...register("notes")}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                  placeholder="Additional notes..."
-                />
-              </div>
-
               {/* Multi-field scan button */}
               <div className="rounded-lg border-2 border-dashed border-slate-300 p-4">
                 <button
@@ -368,7 +350,11 @@ const BarcodeScannerDemoPage: React.FC = () => {
                 <XMarkIcon className="h-4 w-4" />
               </button>
             </Dialog.Close>
-            <BarcodeScanner isOpen={showScanner} onScan={handleScanResult} />
+            <BarcodeScanner 
+              isOpen={showScanner} 
+              onScan={handleScanResult}
+              formats={['CODE_128', 'CODE_39', 'EAN_13', 'QR_CODE']}
+            />
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
