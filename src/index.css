@@ -1,1 +1,43 @@
 @import "tailwindcss";
+
+
+.text-input {
+  @apply rounded-md border border-gray-300 bg-white px-3 py-2 text-sm transition-all duration-200 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:outline-none;
+}
+
+.text-input:disabled {
+  @apply cursor-not-allowed bg-gray-50 opacity-50;
+}
+
+.text-input:disabled:hover {
+  transform: none;
+}
+.text-input:focus {
+  @apply border-transparent;
+}
+
+.label {
+  @apply mb-1 block text-sm font-medium text-gray-700;
+}
+
+.textarea {
+  @apply rounded-md border border-gray-300 px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none;
+}
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  line-height: 1.25rem;
+  transition:
+    background-color 0.2s,
+    transform 0.1s;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  @apply btn border border-gray-300 text-gray-800 hover:bg-gray-100 active:scale-95;
+}

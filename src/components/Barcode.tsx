@@ -1,98 +1,98 @@
-import React, { useRef, useEffect } from "react";
-import JsBarcode from "jsbarcode";
+import JsBarcode, { type Options } from 'jsbarcode';
+import React, { useEffect, useRef } from 'react';
 
-interface BarcodeOptions {
-  format?: string;
-  width?: number;
-  height?: number;
-  displayValue?: boolean;
-  text?: string;
-  fontSize?: number;
-  textAlign?: "left" | "center" | "right";
-  textPosition?: "bottom" | "top";
-  textMargin?: number;
-  fontFamily?: string;
-  background?: string;
-  foreground?: string;
-  margin?: number;
-  marginTop?: number;
-  marginBottom?: number;
-  marginLeft?: number;
-  marginRight?: number;
-}
+type Renderer = 'svg' | 'canvas' | 'img';
+
+type JsBarcodeFormat =
+  | 'CODE128'
+  | 'CODE128A'
+  | 'CODE128B'
+  | 'CODE128C'
+  | 'EAN13'
+  | 'EAN8'
+  | 'EAN5'
+  | 'EAN2'
+  | 'UPC'
+  | 'UPCE'
+  | 'ITF'
+  | 'ITF14'
+  | 'MSI'
+  | 'MSI10'
+  | 'MSI11'
+  | 'MSI1010'
+  | 'MSI1110'
+  | 'pharmacode'
+  | 'codabar';
+
+type BarCodeOptions = Omit<Partial<Options>, 'format'> & {
+  format?: JsBarcodeFormat;
+};
 
 interface BarcodeProps {
   value: string;
   text?: string;
-  renderer?: "svg" | "canvas" | "img";
+  renderer?: Renderer;
   id?: string;
   className?: string;
-  options?: BarcodeOptions;
+  options?: BarCodeOptions;
 }
 
-const Barcode: React.FC<BarcodeProps> = ({
+const defaultOptions: Required<Pick<Options, 'format'>> & Partial<Options> = {
+  format: 'CODE128',
+  lineColor: '#000000',
+  width: 2,
+  height: 100,
+  displayValue: true,
+  fontSize: 16,
+  margin: 10,
+};
+
+export const Barcode: React.FC<BarcodeProps> = ({
   value,
   text,
-  renderer = "svg",
+  renderer = 'svg',
   id,
   className,
   options = {},
 }) => {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const renderRef = useRef<SVGSVGElement | HTMLCanvasElement | HTMLImageElement>(null);
 
   useEffect(() => {
-    let currentRef: HTMLElement | SVGSVGElement | null = null;
-
-    if (renderer === "canvas" && canvasRef.current) {
-      currentRef = canvasRef.current;
-    } else if (renderer === "img" && imgRef.current) {
-      currentRef = imgRef.current;
-    } else if (renderer === "svg" && svgRef.current) {
-      currentRef = svgRef.current;
-    }
-
-    if (!currentRef || !value) return;
+    if (!renderRef.current) return;
 
     try {
-      // Default options
-      const defaultOptions: BarcodeOptions = {
-        format: "CODE128",
-        width: 2,
-        height: 100,
-        displayValue: true,
-        fontSize: 20,
-        textAlign: "center",
-        textPosition: "bottom",
-        textMargin: 2,
-        fontFamily: "monospace",
-        background: "#ffffff",
-        foreground: "#000000",
-        margin: 10,
+      JsBarcode(renderRef.current, value, {
+        ...defaultOptions,
         ...options,
-      };
-
-      // If text prop is provided, use it; otherwise use the display value from options
-      if (text !== undefined) {
-        defaultOptions.text = text;
-      }
-
-      JsBarcode(currentRef, value, defaultOptions);
-    } catch (error) {
-      console.error("Error generating barcode:", error);
+        text: text ?? value,
+      });
+    } catch (err) {
+      console.error('Failed to render barcode:', err);
     }
-  }, [value, text, options, renderer]);
+  }, [value, text, options]);
 
-  // Render based on the specified renderer type
-  if (renderer === "canvas") {
-    return <canvas ref={canvasRef} id={id} className={className} />;
-  } else if (renderer === "img") {
-    return <img ref={imgRef} id={id} className={className} alt="Barcode" />;
-  } else {
-    // Default to SVG
-    return <svg ref={svgRef} id={id} className={className} />;
+  switch (renderer) {
+    case 'canvas':
+      return (
+        <canvas
+          ref={renderRef as React.RefObject<HTMLCanvasElement>}
+          id={id}
+          className={className}
+        />
+      );
+    case 'img':
+      return (
+        <img
+          ref={renderRef as React.RefObject<HTMLImageElement>}
+          id={id}
+          className={className}
+          alt={text ?? 'Barcode'}
+        />
+      );
+    case 'svg':
+    default:
+      return (
+        <svg ref={renderRef as React.RefObject<SVGSVGElement>} id={id} className={className} />
+      );
   }
 };
-
-export default Barcode;

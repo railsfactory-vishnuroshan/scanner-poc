@@ -1,4 +1,4 @@
-import BarcodeScannerDemoPage from "./pages/BarcodeScannerDemoPage";
+import {BarcodeScannerDemoPage} from "./pages/BarcodeScannerDemoPage";
 
 function App() {
   return (
