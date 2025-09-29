@@ -28,6 +28,7 @@ export function BarcodeScannerDemoPage() {
   const [activeField, setActiveField] = useState<keyof DemoFormData | 'multiple' | 'bottom-menu' | null>(null);
   const [currentFocusIndex, setCurrentFocusIndex] = useState(0);
   const [showTestBarcodes, setShowTestBarcodes] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   // Form field references for focus management (simplified)
   const fieldOrder = useMemo(() => ['productCode', 'serialNumber', 'location'] as (keyof DemoFormData)[], []);
@@ -103,11 +104,7 @@ export function BarcodeScannerDemoPage() {
       label: 'Multi-Field Example',
       description: 'Use multi-scan button - fills Product Code and Serial Number',
     },
-    {
-      value: 'ABC-XYZ-789',
-      label: 'Generic Barcode',
-      description: 'Can be scanned into any focused field',
-    },
+
   ];
 
   // Handle scan result - memoized to prevent infinite loops in BarcodeScanner
@@ -163,7 +160,7 @@ export function BarcodeScannerDemoPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-auto bg-gray-50 p-3 pb-20 sm:p-4">
+    <div className="min-h-screen overflow-auto bg-gray-50 p-3 pb-32 sm:p-4 sm:pb-32">
       <div className="mx-auto max-w-md sm:max-w-2xl">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
@@ -171,6 +168,61 @@ export function BarcodeScannerDemoPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Instructions Section */}
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <h2 className="card-header mb-0">How to Use</h2>
+              <button
+                type="button"
+                onClick={() => setShowInstructions(!showInstructions)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {showInstructions ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {showInstructions && (
+              <div className="mt-4 space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-600">
+                      1
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Single Field Scanning</h4>
+                      <p className="text-sm text-gray-600">Click on any input field to focus it, then press the blue scan button at the bottom.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-600">
+                      2
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Multi-Field Scanning</h4>
+                      <p className="text-sm text-gray-600">Use the "Scan Product Code + Serial Number" button to fill both fields at once with format: ProductCode|SerialNumber</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-600">
+                      3
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Auto-Advance</h4>
+                      <p className="text-sm text-gray-600">After scanning with the bottom button, focus automatically moves to the next field for continuous scanning.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="rounded bg-yellow-50 border border-yellow-200 p-3">
+                    <p className="text-sm text-yellow-800">
+                      Open this app on your phone, then use your phone's camera to scan these test barcodes displayed on your desktop screen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Form Section */}
           <div className="card">
             <h2 className="card-header">Warehouse Form</h2>
@@ -262,8 +314,8 @@ export function BarcodeScannerDemoPage() {
             {showTestBarcodes && (
               <div className="mt-4 space-y-4">
                 {sampleBarcodes.map((sample, index) => (
-                  <div key={index} className="border-b border-gray-100 pb-4 last:border-b-0">
-                    <div className="mb-2">
+                  <div key={index} className="border-b border-gray-100 pb-4 last:border-b-0 text-center">
+                    <div className="mb-2 flex justify-center">
                       <Barcode
                         value={sample.value}
                         options={{
