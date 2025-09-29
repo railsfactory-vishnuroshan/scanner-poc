@@ -99,6 +99,11 @@ export function BarcodeScannerDemoPage() {
       description: 'Focus location field and scan',
     },
     {
+      value: 'PROD456|SER123456789',
+      label: 'Multi-Field Example',
+      description: 'Use multi-scan button - fills Product Code and Serial Number',
+    },
+    {
       value: 'ABC-XYZ-789',
       label: 'Generic Barcode',
       description: 'Can be scanned into any focused field',
@@ -109,15 +114,32 @@ export function BarcodeScannerDemoPage() {
   const handleScanResult = useCallback((scannedText: string) => {
     console.log('🔄 handleScanResult called:', { scannedText, activeField, currentFocusIndex });
     
-    // Get the currently focused field and fill it
-    const currentField = getCurrentFocusedField();
-    console.log('🎯 Filling focused field:', currentField, 'with value:', scannedText);
-    
-    setValue(currentField, scannedText);
-    console.log('✅ Field populated, moving to next field...');
-    
-    // Move to next field for continuous scanning workflow
-    focusNextField();
+    if (activeField === 'multiple') {
+      // Multi-field mode: fill Product Code and Serial Number
+      console.log('📋 Multi-field scan mode');
+      const parts = scannedText.split('|');
+      
+      if (parts.length >= 2) {
+        console.log('✅ Multi-field format detected:', parts);
+        setValue('productCode', parts[0].trim());
+        setValue('serialNumber', parts[1].trim());
+        console.log('✅ Both fields populated');
+      } else {
+        // Fallback: put entire string in product code
+        console.log('⚠️ Single value detected, filling product code only');
+        setValue('productCode', scannedText);
+      }
+    } else {
+      // Single field mode: fill focused field
+      const currentField = getCurrentFocusedField();
+      console.log('🎯 Filling focused field:', currentField, 'with value:', scannedText);
+      
+      setValue(currentField, scannedText);
+      console.log('✅ Field populated, moving to next field...');
+      
+      // Move to next field for continuous scanning workflow
+      focusNextField();
+    }
     
     console.log('🔒 Closing scanner...');
     setShowScanner(false);
@@ -127,6 +149,12 @@ export function BarcodeScannerDemoPage() {
   const openScanner = () => {
     console.log('📷 Opening scanner for currently focused field');
     setActiveField('bottom-menu');  // Always use bottom-menu mode
+    setShowScanner(true);
+  };
+
+  const openMultiFieldScanner = () => {
+    console.log('📷 Opening multi-field scanner');
+    setActiveField('multiple');  // Use multiple mode
     setShowScanner(true);
   };
 
@@ -200,6 +228,21 @@ export function BarcodeScannerDemoPage() {
                     <p className="text-sm text-red-500">{errors.location.message}</p>
                   )}
                 </div>
+              </div>
+
+              {/* Multi-field scan button */}
+              <div className="rounded border border-dashed border-gray-300 p-4">
+                <button
+                  type="button"
+                  onClick={openMultiFieldScanner}
+                  className="btn-secondary flex w-full items-center justify-center gap-2"
+                >
+                  <ScanBarcodeIcon className="size-4" />
+                  <span>Scan Product Code + Serial Number</span>
+                </button>
+                <p className="mt-2 text-sm text-gray-500">
+                  Format: ProductCode|SerialNumber
+                </p>
               </div>
             </form>
           </div>
