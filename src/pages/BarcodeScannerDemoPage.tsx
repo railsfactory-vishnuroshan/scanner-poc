@@ -1,7 +1,7 @@
 import { QrCodeIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Dialog from '@radix-ui/react-dialog';
-import { useState } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {Barcode} from '../components/Barcode';
@@ -11,7 +11,6 @@ import {BarcodeScanner} from '../components/BarcodeScanner';
 const demoFormSchema = z.object({
   productCode: z.string().min(1, 'Product code is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
- 
   location: z.string().min(1, 'Location is required'),
   
 });
@@ -25,7 +24,22 @@ type DemoFormData = z.infer<typeof demoFormSchema>;
 export function BarcodeScannerDemoPage() {
 
   const [showScanner, setShowScanner] = useState(false);
-  const [activeField, setActiveField] = useState<keyof DemoFormData | 'multiple' | null>(null);
+  const [activeField, setActiveField] = useState<keyof DemoFormData | 'multiple' | 'bottom-menu' | null>(null);
+  const [currentFocusIndex, setCurrentFocusIndex] = useState(0);
+  const [showTestBarcodes, setShowTestBarcodes] = useState(false);
+
+  // Form field references for focus management
+  const productCodeRef = useRef<HTMLInputElement>(null);
+  const serialNumberRef = useRef<HTMLInputElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+  
+  const fieldRefs = useMemo(() => ({
+    productCode: productCodeRef,
+    serialNumber: serialNumberRef,
+    location: locationRef,
+  }), []);
+
+  const fieldOrder: (keyof DemoFormData)[] = ['productCode', 'serialNumber', 'location'];
 
   const {
     register,
@@ -41,6 +55,26 @@ export function BarcodeScannerDemoPage() {
       location: '',
     },
   });
+
+  // Focus management functions
+  const focusNextField = () => {
+    const nextIndex = (currentFocusIndex + 1) % fieldOrder.length;
+    const nextField = fieldOrder[nextIndex];
+    fieldRefs[nextField].current?.focus();
+    setCurrentFocusIndex(nextIndex);
+  };
+
+  const getCurrentFocusedField = (): keyof DemoFormData => {
+    return fieldOrder[currentFocusIndex];
+  };
+
+  // Focus first field on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      productCodeRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Sample barcodes for testing
   const sampleBarcodes = [
@@ -81,6 +115,11 @@ export function BarcodeScannerDemoPage() {
         // Fallback: Use as product code if format doesn't match
         setValue('productCode', scannedText);
       }
+    } else if (activeField === 'bottom-menu') {
+      // Handle bottom menu scan - fill focused field and move to next
+      const currentField = getCurrentFocusedField();
+      setValue(currentField, scannedText);
+      focusNextField();
     } else if (activeField) {
       // Populate single field
       setValue(activeField, scannedText);
@@ -89,7 +128,7 @@ export function BarcodeScannerDemoPage() {
     setActiveField(null);
   };
 
-  const openScanner = (field: keyof DemoFormData | 'multiple') => {
+  const openScanner = (field: keyof DemoFormData | 'multiple' | 'bottom-menu') => {
     setActiveField(field);
     setShowScanner(true);
   };
@@ -101,11 +140,11 @@ export function BarcodeScannerDemoPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-auto bg-gray-50 p-4">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen overflow-auto bg-gray-50 p-3 pb-20 sm:p-4">
+      <div className="mx-auto max-w-md sm:max-w-2xl">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-gray-900">Scanner Demo</h1>
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Scanner Demo</h1>
         </div>
 
         <div className="space-y-6">
@@ -122,6 +161,7 @@ export function BarcodeScannerDemoPage() {
                 <div className="flex gap-2">
                   <input
                     {...register('productCode')}
+                    ref={productCodeRef}
                     className={`text-input w-full ${errors.productCode ? 'border-red-500' : ''}`}
                     placeholder="Enter product code"
                   />
@@ -148,6 +188,7 @@ export function BarcodeScannerDemoPage() {
                 <div className="flex gap-2">
                   <input
                     {...register('serialNumber')}
+                    ref={serialNumberRef}
                     className={`text-input w-full ${errors.serialNumber ? 'border-red-500' : ''}`}
                     placeholder="Enter serial number"
                   />
@@ -174,6 +215,7 @@ export function BarcodeScannerDemoPage() {
                 <div className="flex gap-2">
                   <input
                     {...register('location')}
+                    ref={locationRef}
                     className={`text-input w-full ${errors.location ? 'border-red-500' : ''}`}
                     placeholder="Enter location"
                   />
@@ -210,29 +252,53 @@ export function BarcodeScannerDemoPage() {
 
           {/* Sample Barcodes Section */}
           <div className="card">
-            <h2 className="card-header">Test Barcodes</h2>
-            <div className="space-y-4">
-              {sampleBarcodes.map((sample, index) => (
-                <div key={index} className="border-b border-gray-100 pb-4 last:border-b-0">
-                  <div className="mb-2">
-                    <Barcode
-                      value={sample.value}
-                      options={{
-                        format: 'CODE128',
-                        width: 1,
-                        height: 40,
-                        displayValue: false,
-                        margin: 5,
-                      }}
-                    />
-                  </div>
-                  <p className="text-sm font-medium text-gray-900">{sample.label}</p>
-                  <p className="font-mono text-xs text-gray-500">{sample.value}</p>
-                  <p className="text-xs text-gray-400">{sample.description}</p>
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <h2 className="card-header mb-0">Test Barcodes</h2>
+              <button
+                type="button"
+                onClick={() => setShowTestBarcodes(!showTestBarcodes)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {showTestBarcodes ? 'Hide' : 'Show'}
+              </button>
             </div>
+            {showTestBarcodes && (
+              <div className="mt-4 space-y-4">
+                {sampleBarcodes.map((sample, index) => (
+                  <div key={index} className="border-b border-gray-100 pb-4 last:border-b-0">
+                    <div className="mb-2">
+                      <Barcode
+                        value={sample.value}
+                        options={{
+                          format: 'CODE128',
+                          width: 1,
+                          height: 40,
+                          displayValue: false,
+                          margin: 5,
+                        }}
+                      />
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">{sample.label}</p>
+                    <p className="font-mono text-xs text-gray-500">{sample.value}</p>
+                    <p className="text-xs text-gray-400">{sample.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Bottom Menu Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 px-4 py-3 safe-area-pb">
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => openScanner('bottom-menu')}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
+          >
+            <QrCodeIcon className="size-7" />
+          </button>
         </div>
       </div>
 
@@ -240,6 +306,9 @@ export function BarcodeScannerDemoPage() {
       <Dialog.Root open={showScanner} onOpenChange={setShowScanner}>
         <Dialog.Portal>
           <Dialog.Title className="sr-only">Scan Barcode</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Use your device camera to scan a barcode and automatically fill the form field
+          </Dialog.Description>
           <Dialog.Overlay className="bg-opacity-50 fixed inset-0 bg-black" />
           <Dialog.Content className="fixed top-1/2 left-1/2 max-h-[85vh] w-[90vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded bg-white shadow-lg">
             <Dialog.Close asChild>

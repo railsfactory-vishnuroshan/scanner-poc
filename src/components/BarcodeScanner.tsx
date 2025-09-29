@@ -8,22 +8,20 @@ interface BarcodeScannerProps {
 }
 
 /**
- * High-Performance Barcode Scanner - CODE_128 Only
+ * Barcode Scanner Component - CODE_128 Only
  * 
- * Aggressive Performance Optimizations:
- * - CODE_128 format only (80%+ speed improvement vs multi-format)
- * - TRY_HARDER=false for faster detection
- * - Reduced error logging (99% less console spam)  
- * - Optimized camera selection (prefers back camera)
- * - Fast stream capture with immediate retry
- * - Performance-optimized video element attributes
- * - Streamlined detection callback processing
+ * Optimizations:
+ * - CODE_128 format only for improved performance
+ * - Low resolution stream (640x480) for faster processing
+ * - Prefers back camera for better scanning
+ * - Proper ZXing cleanup to prevent memory leaks
  */
 export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const isStopping = useRef(false); // Add flag to prevent processing after stop
+  const stopFunctionRef = useRef<{ stop: () => void } | null>(null);
+  const isStopping = useRef(false);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -31,13 +29,21 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
 
   const stopScanning = useCallback(() => {
-    console.log('🛑 Stopping scanner');
-    isStopping.current = true; // Set flag to stop processing
+    isStopping.current = true;
+
+    // Stop ZXing decoder first
+    if (stopFunctionRef.current) {
+      try {
+        stopFunctionRef.current.stop();
+        stopFunctionRef.current = null;
+      } catch {
+        // Silently handle any cleanup errors
+      }
+    }
 
     // Stop video stream using stored reference
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => {
-        console.log('Stopping track:', track.kind, track.label);
         track.stop();
       });
       streamRef.current = null;
@@ -56,14 +62,12 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
     if (videoRef.current) {
       const videoElement = videoRef.current;
       
-      // Pause video first to stop any pending play promises
       try {
         videoElement.pause();
-      } catch (pauseError) {
-        console.log('Video pause error (expected during cleanup):', pauseError);
+      } catch {
+        // Silently handle pause errors during cleanup
       }
       
-      // Clear source to prevent play interruption errors
       videoElement.srcObject = null;
       videoElement.removeAttribute('src');
       videoElement.load();
@@ -83,26 +87,23 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
     try {
       setError(null);
       setIsScanning(true);
-      isStopping.current = false; // Reset the stopping flag
+      isStopping.current = false;
 
       codeReader.current = new BrowserMultiFormatReader();
 
       // Aggressive performance optimizations for CODE_128 only
       const hints = new Map();
-      hints.set('POSSIBLE_FORMATS', ['CODE_128']); // Only CODE_128 for maximum speed
-      hints.set('TRY_HARDER', false); // Fast detection, less thorough
-      hints.set('PURE_BARCODE', false); // Allow barcodes with surrounding content
-      hints.set('ASSUME_CODE_39_CHECK_DIGIT', false); // Not relevant for CODE_128
-      hints.set('ASSUME_GS1', false); // Skip GS1 processing unless needed
-      
-      console.log('🚀 Optimized for CODE_128 only - maximum performance mode');
+      hints.set('POSSIBLE_FORMATS', ['CODE_128']);
+      hints.set('TRY_HARDER', false);
+      hints.set('PURE_BARCODE', false);
+      hints.set('ASSUME_CODE_39_CHECK_DIGIT', false);
+      hints.set('ASSUME_GS1', false);
       
       // Apply performance hints
       codeReader.current.setHints(hints);
 
       // Get available cameras with performance preference
       const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-      console.log('Available cameras:', videoInputDevices);
       setAvailableCameras(videoInputDevices);
 
       // Performance-optimized camera selection
@@ -110,7 +111,6 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
       if (videoInputDevices.length > 0) {
         if (videoInputDevices[currentCameraIndex]) {
           deviceId = videoInputDevices[currentCameraIndex].deviceId;
-          console.log('Using selected camera:', videoInputDevices[currentCameraIndex].label);
         } else {
           // Prefer back/environment camera for better barcode scanning performance
           const backCamera = videoInputDevices.find(
@@ -123,34 +123,24 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
             deviceId = backCamera.deviceId;
             const backCameraIndex = videoInputDevices.indexOf(backCamera);
             setCurrentCameraIndex(backCameraIndex);
-            console.log('Using back camera for performance:', backCamera.label);
           } else {
             deviceId = videoInputDevices[0].deviceId;
             setCurrentCameraIndex(0);
-            console.log('Using first available camera:', videoInputDevices[0].label);
           }
         }
       }
 
-      // Phase 1: Video Resolution & Stream Optimizations
       // Create optimized MediaStream with low resolution for maximum performance
       const videoConstraints = {
         deviceId: deviceId ? { exact: deviceId } : undefined,
-        width: { ideal: 640, max: 800 },    // Low resolution for 4x faster processing
-        height: { ideal: 480, max: 600 },   // Maintain 4:3 aspect ratio
-        frameRate: { ideal: 15, max: 20 },  // Lower frame rate for 2x less CPU usage
-        focusMode: 'continuous',            // Keep barcode in focus
-        exposureMode: 'continuous',         // Auto-adjust for barcode reading
-        whiteBalanceMode: 'continuous',     // Optimal contrast
-        facingMode: deviceId ? undefined : 'environment' // Prefer back camera
+        width: { ideal: 640, max: 800 },
+        height: { ideal: 480, max: 600 },
+        frameRate: { ideal: 15, max: 20 },
+        focusMode: 'continuous',
+        exposureMode: 'continuous',
+        whiteBalanceMode: 'continuous',
+        facingMode: deviceId ? undefined : 'environment'
       };
-
-      console.log('📐 Creating optimized low-resolution stream:', {
-        width: '640px (vs ~1280px default)',
-        height: '480px (vs ~720px default)', 
-        frameRate: '15fps (vs 30fps default)',
-        expectedSpeedup: '4x faster processing'
-      });
 
       // Create manual MediaStream for full control
       const optimizedStream = await navigator.mediaDevices.getUserMedia({
@@ -167,36 +157,18 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
         videoElement.srcObject = optimizedStream;
         
         try {
-          // Check if element is still in DOM before playing
           if (videoElement.isConnected && document.contains(videoElement)) {
             const playPromise = videoElement.play();
             
-            // Handle play promise properly to avoid interruption errors
             if (playPromise !== undefined) {
               await playPromise.catch(error => {
-                // Ignore play interruption errors when component unmounts
                 if (error.name === 'AbortError' || error.name === 'NotAllowedError') {
-                  console.log('📹 Video play interrupted (component unmounting):', error.name);
                   return;
                 }
                 throw error;
               });
             }
-            
-            // Log actual stream settings achieved (only if play succeeded)
-            if (videoElement.isConnected) {
-              const videoTrack = optimizedStream.getVideoTracks()[0];
-              const settings = videoTrack.getSettings();
-              console.log('✅ Optimized stream created:', {
-                actualWidth: settings.width,
-                actualHeight: settings.height,
-                actualFrameRate: settings.frameRate,
-                deviceId: settings.deviceId,
-                facingMode: settings.facingMode
-              });
-            }
           } else {
-            console.log('📹 Video element removed from DOM - skipping play');
             // Clean up the stream since we can't use it
             optimizedStream.getTracks().forEach(track => track.stop());
             return;
@@ -208,58 +180,23 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
       }
 
       if (codeReader.current && videoRef.current) {
-        await codeReader.current.decodeFromVideoDevice(
-          undefined, // No deviceId needed since we're providing the stream
+        const controls = await codeReader.current.decodeFromVideoDevice(
+          undefined,
           videoRef.current,
-          (result, err) => {
-            // Only process results when scanning is active
+          (result) => {
             if (isStopping.current) {
-              console.log('⏹️ Ignoring result - scanner is stopping');
               return;
             }
 
             if (result) {
-              console.log('✅ CODE_128 barcode detected!', result.getText());
               onScan(result.getText());
               stopScanning();
-            } else if (err && Math.random() < 0.01) { 
-              // Only log 1% of errors to reduce console spam
-              console.log('Scanner waiting for CODE_128...');
             }
           }
         );
+        
+        stopFunctionRef.current = controls;
       }
-
-      // Performance monitoring 
-      const testStart = Date.now();
-      const detectFirst = () => {
-        const elapsed = Date.now() - testStart;
-        if (elapsed > 100) {
-          console.log(`⚡ Phase 1 optimization active - Low-res stream created in ${elapsed}ms`);
-        }
-      };
-      detectFirst();
-
-      console.log('🎥 Scanner started with Phase 1 optimizations');
-      
-      // Immediate stream verification with retry
-      const captureStreamImmediate = () => {
-        if (videoRef.current && videoRef.current.videoWidth > 0) {
-          const settings = streamRef.current?.getVideoTracks()[0]?.getSettings();
-          if (settings) {
-            console.log('📊 Final stream verification:', {
-              width: settings.width,
-              height: settings.height,
-              frameRate: settings.frameRate,
-              facingMode: settings.facingMode
-            });
-          }
-        } else {
-          // Quick retry for stream capture
-          setTimeout(captureStreamImmediate, 25);
-        }
-      };
-      captureStreamImmediate();
     } catch (err) {
       console.error('Scanner start error:', err);
       setError(err instanceof Error ? err.message : 'Failed to start camera');
@@ -269,22 +206,16 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
 
   // Switch to next available camera
   const switchCamera = useCallback(async () => {
-    if (availableCameras.length <= 1) return; // No point switching if only one camera
+    if (availableCameras.length <= 1) return;
 
     setIsSwitchingCamera(true);
-
-    // Stop current scanning
     stopScanning();
 
-    // Switch to next camera (cycle through available cameras)
     const nextIndex = (currentCameraIndex + 1) % availableCameras.length;
-    console.log(`🔄 Switching from camera ${currentCameraIndex} to ${nextIndex}`);
     setCurrentCameraIndex(nextIndex);
 
-    // Small delay to ensure cleanup is complete
     setTimeout(() => {
       setIsSwitchingCamera(false);
-      // startScanning will be called automatically via useEffect due to currentCameraIndex change
     }, 500);
   }, [availableCameras.length, currentCameraIndex, stopScanning]);
 
@@ -304,18 +235,27 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
     // Capture refs at effect setup time to avoid stale closure issues
     const videoElement = videoRef.current;
     const currentStream = streamRef.current;
+    const currentStopFunction = stopFunctionRef.current;
     
     return () => {
       // Emergency cleanup when component unmounts
+      
+      // Stop ZXing decoder first
+      if (currentStopFunction) {
+        try {
+          currentStopFunction.stop();
+        } catch {
+          // Silently handle cleanup errors
+        }
+      }
+      
       if (videoElement) {
-        // Stop any pending play promises
         if (videoElement.srcObject) {
           try {
             videoElement.pause();
             videoElement.srcObject = null;
-          } catch (cleanupError) {
-            const error = cleanupError as Error;
-            console.log('Emergency cleanup completed:', error.name);
+          } catch {
+            // Silently handle cleanup errors
           }
         }
       }
@@ -325,9 +265,8 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
         currentStream.getTracks().forEach(track => {
           try {
             track.stop();
-          } catch (trackError) {
-            const error = trackError as Error;
-            console.log('Track cleanup completed:', error.name);
+          } catch {
+            // Silently handle cleanup errors
           }
         });
       }
@@ -376,11 +315,11 @@ export function BarcodeScanner({ onScan, isOpen }: BarcodeScannerProps) {
               muted
               autoPlay
               preload="none"
-              width="640"         // Phase 1: Force low resolution
-              height="480"        // Phase 1: 4:3 aspect ratio  
+              width="640"
+              height="480"
               style={{ 
-                maxWidth: '640px',    // Prevent upscaling
-                maxHeight: '480px',   // Maintain performance
+                maxWidth: '640px',
+                maxHeight: '480px',
                 objectFit: 'cover'
               }}
             />
