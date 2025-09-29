@@ -1,0 +1,8 @@
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=86400
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
