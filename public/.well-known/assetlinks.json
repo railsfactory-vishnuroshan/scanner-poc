@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.netlify.scanner_poc_djm.twa",
+        "sha256_cert_fingerprints": ["FC:57:25:1A:61:2C:04:50:0E:81:DE:18:A0:80:65:A9:C4:35:5D:47:12:5D:B8:FA:BD:89:54:32:C0:05:85:03"]
+      }
+    }]

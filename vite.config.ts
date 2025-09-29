@@ -25,6 +25,9 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         categories: ['productivity', 'business', 'utilities'],
+        edge_side_panel: {
+          preferred_width: 400
+        },
         shortcuts: [
           {
             name: 'Quick Scan',
