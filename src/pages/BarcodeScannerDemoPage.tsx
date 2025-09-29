@@ -1,7 +1,7 @@
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Dialog from '@radix-ui/react-dialog';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {Barcode} from '../components/Barcode';
@@ -29,18 +29,8 @@ export function BarcodeScannerDemoPage() {
   const [currentFocusIndex, setCurrentFocusIndex] = useState(0);
   const [showTestBarcodes, setShowTestBarcodes] = useState(false);
 
-  // Form field references for focus management
-  const productCodeRef = useRef<HTMLInputElement>(null);
-  const serialNumberRef = useRef<HTMLInputElement>(null);
-  const locationRef = useRef<HTMLInputElement>(null);
-  
-  const fieldRefs = useMemo(() => ({
-    productCode: productCodeRef,
-    serialNumber: serialNumberRef,
-    location: locationRef,
-  }), []);
-
-  const fieldOrder: (keyof DemoFormData)[] = ['productCode', 'serialNumber', 'location'];
+  // Form field references for focus management (simplified)
+  const fieldOrder = useMemo(() => ['productCode', 'serialNumber', 'location'] as (keyof DemoFormData)[], []);
 
   const {
     register,
@@ -57,22 +47,36 @@ export function BarcodeScannerDemoPage() {
     },
   });
 
-  // Focus management functions
-  const focusNextField = () => {
+  // Focus management functions - memoized to prevent infinite loops
+  const updateCurrentFocus = useCallback((fieldName: keyof DemoFormData) => {
+    const index = fieldOrder.indexOf(fieldName);
+    setCurrentFocusIndex(index);
+    console.log('🎯 Focus updated:', fieldName, 'Index:', index);
+  }, [fieldOrder]);
+
+  const focusNextField = useCallback(() => {
     const nextIndex = (currentFocusIndex + 1) % fieldOrder.length;
     const nextField = fieldOrder[nextIndex];
-    fieldRefs[nextField].current?.focus();
+    
+    // Find the input element by name and focus it
+    const nextInput = document.querySelector(`input[name="${nextField}"]`) as HTMLInputElement;
+    nextInput?.focus();
+    
     setCurrentFocusIndex(nextIndex);
-  };
+    console.log('➡️ Moving to next field:', nextField, 'Index:', nextIndex);
+  }, [currentFocusIndex, fieldOrder]);
 
-  const getCurrentFocusedField = (): keyof DemoFormData => {
-    return fieldOrder[currentFocusIndex];
-  };
+  const getCurrentFocusedField = useCallback((): keyof DemoFormData => {
+    const field = fieldOrder[currentFocusIndex];
+    console.log('📍 Getting current focused field:', field, 'Index:', currentFocusIndex);
+    return field;
+  }, [fieldOrder, currentFocusIndex]);
 
   // Focus first field on mount
   useEffect(() => {
     const timer = setTimeout(() => {
-      productCodeRef.current?.focus();
+      const firstInput = document.querySelector('input[name="productCode"]') as HTMLInputElement;
+      firstInput?.focus();
     }, 100);
     return () => clearTimeout(timer);
   }, []);
@@ -81,62 +85,52 @@ export function BarcodeScannerDemoPage() {
   const sampleBarcodes = [
     {
       value: 'PROD123',
-      label: 'Single Field - Product Code',
-      description: 'Scans into product code field only',
-    },
-    {
-      value: 'PROD123|SN456789|5|ZONE-A',
-      label: 'Multi Field',
-      description: 'Scans into multiple fields: Product|Serial|Quantity|Location',
+      label: 'Product Code Example',
+      description: 'Focus product field and scan',
     },
     {
       value: 'SER987654321',
-      label: 'Single Field - Serial Number',
-      description: 'Scans into serial number field only',
+      label: 'Serial Number Example',
+      description: 'Focus serial field and scan',
     },
     {
       value: 'LOC-B2-SHELF-3',
-      label: 'Single Field - Location',
-      description: 'Scans into location field only',
+      label: 'Location Example',
+      description: 'Focus location field and scan',
+    },
+    {
+      value: 'ABC-XYZ-789',
+      label: 'Generic Barcode',
+      description: 'Can be scanned into any focused field',
     },
   ];
 
-  // Handle scan result
-  const handleScanResult = (scannedText: string) => {
-    if (activeField === 'multiple') {
-      // Demo: Parse barcode for multiple fields
-      // Format: "PROD123|SN456789|5|ZONE-A"
-      const parts = scannedText.split('|');
-      if (parts.length >= 4) {
-        setValue('productCode', parts[0]);
-        setValue('serialNumber', parts[1]);
-        
-        setValue('location', parts[3]);
-      } else {
-        // Fallback: Use as product code if format doesn't match
-        setValue('productCode', scannedText);
-      }
-    } else if (activeField === 'bottom-menu') {
-      // Handle bottom menu scan - fill focused field and move to next
-      const currentField = getCurrentFocusedField();
-      setValue(currentField, scannedText);
-      focusNextField();
-    } else if (activeField) {
-      // Populate single field
-      setValue(activeField, scannedText);
-    }
+  // Handle scan result - memoized to prevent infinite loops in BarcodeScanner
+  const handleScanResult = useCallback((scannedText: string) => {
+    console.log('🔄 handleScanResult called:', { scannedText, activeField, currentFocusIndex });
+    
+    // Get the currently focused field and fill it
+    const currentField = getCurrentFocusedField();
+    console.log('🎯 Filling focused field:', currentField, 'with value:', scannedText);
+    
+    setValue(currentField, scannedText);
+    console.log('✅ Field populated, moving to next field...');
+    
+    // Move to next field for continuous scanning workflow
+    focusNextField();
+    
+    console.log('🔒 Closing scanner...');
     setShowScanner(false);
     setActiveField(null);
-  };
+  }, [activeField, currentFocusIndex, getCurrentFocusedField, setValue, focusNextField]);
 
-  const openScanner = (field: keyof DemoFormData | 'multiple' | 'bottom-menu') => {
-    setActiveField(field);
+  const openScanner = () => {
+    console.log('📷 Opening scanner for currently focused field');
+    setActiveField('bottom-menu');  // Always use bottom-menu mode
     setShowScanner(true);
   };
 
-  const handleFormSubmit = (data: DemoFormData) => {
-    console.log('Form submitted:', data);
-    alert(`Form submitted with data: ${JSON.stringify(data, null, 2)}`);
+  const handleFormSubmit = () => {
     reset();
   };
 
@@ -159,21 +153,12 @@ export function BarcodeScannerDemoPage() {
                 <label htmlFor="productCode" className="label">
                   Product Code <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    {...register('productCode')}
-                    ref={productCodeRef}
-                    className={`text-input w-full ${errors.productCode ? 'border-red-500' : ''}`}
-                    placeholder="Enter product code"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => openScanner('productCode')}
-                    className="icon-button"
-                  >
-                    <ScanBarcodeIcon className="size-5" />
-                  </button>
-                </div>
+                <input
+                  {...register('productCode')}
+                  onFocus={() => updateCurrentFocus('productCode')}
+                  className={`text-input w-full ${errors.productCode ? 'border-red-500' : ''}`}
+                  placeholder="Enter product code or scan with bottom button"
+                />
                 <div className="mt-1 h-1">
                   {errors.productCode && (
                     <p className="text-sm text-red-500">{errors.productCode.message}</p>
@@ -186,21 +171,12 @@ export function BarcodeScannerDemoPage() {
                 <label htmlFor="serialNumber" className="label">
                   Serial Number <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    {...register('serialNumber')}
-                    ref={serialNumberRef}
-                    className={`text-input w-full ${errors.serialNumber ? 'border-red-500' : ''}`}
-                    placeholder="Enter serial number"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => openScanner('serialNumber')}
-                    className="icon-button"
-                  >
-                    <ScanBarcodeIcon className="size-5" />
-                  </button>
-                </div>
+                <input
+                  {...register('serialNumber')}
+                  onFocus={() => updateCurrentFocus('serialNumber')}
+                  className={`text-input w-full ${errors.serialNumber ? 'border-red-500' : ''}`}
+                  placeholder="Enter serial number or scan with bottom button"
+                />
                 <div className="mt-1 h-1">
                   {errors.serialNumber && (
                     <p className="text-sm text-red-500">{errors.serialNumber.message}</p>
@@ -213,40 +189,17 @@ export function BarcodeScannerDemoPage() {
                 <label htmlFor="location" className="label">
                   Location <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    {...register('location')}
-                    ref={locationRef}
-                    className={`text-input w-full ${errors.location ? 'border-red-500' : ''}`}
-                    placeholder="Enter location"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => openScanner('location')}
-                    className="icon-button"
-                  >
-                    <ScanBarcodeIcon className="size-5" />
-                  </button>
-                </div>
+                <input
+                  {...register('location')}
+                  onFocus={() => updateCurrentFocus('location')}
+                  className={`text-input w-full ${errors.location ? 'border-red-500' : ''}`}
+                  placeholder="Enter location or scan with bottom button"
+                />
                 <div className="mt-1 h-1">
                   {errors.location && (
                     <p className="text-sm text-red-500">{errors.location.message}</p>
                   )}
                 </div>
-              </div>
-              {/* Multi-field scan button */}
-              <div className="rounded border border-dashed border-gray-300 p-4">
-                <button
-                  type="button"
-                  onClick={() => openScanner('multiple')}
-                  className="btn-secondary flex w-full items-center justify-center gap-2"
-                >
-                  <ScanBarcodeIcon className="size-4" />
-                  <span>Scan Multi-Field Barcode</span>
-                </button>
-                <p className="mt-2 text-sm text-gray-500">
-                  Format: Product|Serial|Quantity|Location
-                </p>
               </div>
             </form>
           </div>
@@ -295,11 +248,16 @@ export function BarcodeScannerDemoPage() {
         <div className="flex justify-center px-6 py-4">
           <button
             type="button"
-            onClick={() => openScanner('bottom-menu')}
+            onClick={openScanner}
             className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
           >
             <ScanBarcodeIcon className="size-8" />
           </button>
+        </div>
+        <div className="pb-2 text-center">
+          <p className="text-xs text-gray-500">
+            Focus on a field, then scan
+          </p>
         </div>
       </div>
 
