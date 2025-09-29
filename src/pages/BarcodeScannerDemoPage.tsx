@@ -1,4 +1,4 @@
-import { QrCodeIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {Barcode} from '../components/Barcode';
 import {BarcodeScanner} from '../components/BarcodeScanner';
+import { ScanBarcodeIcon } from 'lucide-react';
 
 // Form validation schema
 const demoFormSchema = z.object({
@@ -170,7 +171,7 @@ export function BarcodeScannerDemoPage() {
                     onClick={() => openScanner('productCode')}
                     className="icon-button"
                   >
-                    <QrCodeIcon className="size-5" />
+                    <ScanBarcodeIcon className="size-5" />
                   </button>
                 </div>
                 <div className="mt-1 h-1">
@@ -197,7 +198,7 @@ export function BarcodeScannerDemoPage() {
                     onClick={() => openScanner('serialNumber')}
                     className="icon-button"
                   >
-                    <QrCodeIcon className="size-5" />
+                    <ScanBarcodeIcon className="size-5" />
                   </button>
                 </div>
                 <div className="mt-1 h-1">
@@ -224,7 +225,7 @@ export function BarcodeScannerDemoPage() {
                     onClick={() => openScanner('location')}
                     className="icon-button"
                   >
-                    <QrCodeIcon className="size-5" />
+                    <ScanBarcodeIcon className="size-5" />
                   </button>
                 </div>
                 <div className="mt-1 h-1">
@@ -240,7 +241,7 @@ export function BarcodeScannerDemoPage() {
                   onClick={() => openScanner('multiple')}
                   className="btn-secondary flex w-full items-center justify-center gap-2"
                 >
-                  <QrCodeIcon className="size-4" />
+                  <ScanBarcodeIcon className="size-4" />
                   <span>Scan Multi-Field Barcode</span>
                 </button>
                 <p className="mt-2 text-sm text-gray-500">
@@ -290,14 +291,14 @@ export function BarcodeScannerDemoPage() {
       </div>
 
       {/* Bottom Menu Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 px-4 py-3 safe-area-pb">
-        <div className="flex justify-center">
+      <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 safe-area-pb">
+        <div className="flex justify-center px-6 py-4">
           <button
             type="button"
             onClick={() => openScanner('bottom-menu')}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
           >
-            <QrCodeIcon className="size-7" />
+            <ScanBarcodeIcon className="size-8" />
           </button>
         </div>
       </div>
